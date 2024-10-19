@@ -1,14 +1,17 @@
+//import 'package:app_minimizer/app_minimizer.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 class ScoreScreen extends StatefulWidget {
   final String team_A_name;
   final String team_B_name;
+  final int team_game_over;
 
   const ScoreScreen({
     Key? key,
     required this.team_A_name,
     required this.team_B_name,
+    required this.team_game_over,
   }) : super(key: key);
 
   @override
@@ -31,41 +34,91 @@ class _ScoreScreenState extends State<ScoreScreen> {
   final ScrollController _scrollControllerB = ScrollController();
 
   // Number Buttons
-  final List<int> numbers = [5, 7, 8, 9, 10,11 ,12 , 13];
+  final List<int> numbers = [5, 7, 8, 9, 10, 11, 12, 13];
 
+  // Flag to indicate if the game is over
+  bool isGameOver = false;
+
+  // Function to check for game over condition
   void checkForWin() {
-    if (teamAScore >= 60) {
+    if (isGameOver) return; // If game is already over, do nothing
+
+    if (teamAScore >= widget.team_game_over) {
+      setState(() {
+        isGameOver = true;
+      });
       showWinningDialog(teamName: widget.team_A_name, score: teamAScore);
-    } else if (teamBScore >= 60) {
+    } else if (teamBScore >= widget.team_game_over) {
+      setState(() {
+        isGameOver = true;
+      });
       showWinningDialog(teamName: widget.team_B_name, score: teamBScore);
     }
   }
 
+  // Function to show the winning dialog
   void showWinningDialog({required String teamName, required int score}) {
     showDialog(
       context: context,
+      barrierDismissible: false, // Prevents dialog from closing on tap outside
       builder: (BuildContext context) {
         return AlertDialog(
           title: Column(
             children: [
               const Image(
                 image: AssetImage("assets/winner.png"),
-                width: 60, // Adjust the width as needed
-                height: 60, // Adjust the height as needed
+                width: 60,
+                height: 60,
               ),
-              const SizedBox(width: 10), // Add space between the icon and title
-              const Text("Congratulations!",style: TextStyle(color: Colors.green,fontWeight: FontWeight.w600),),
-              SizedBox(height: 20,),
-              Text("Win Team : $teamName",style: TextStyle(fontWeight: FontWeight.w500,fontSize: 18),)
+              const SizedBox(height: 10),
+              const Text(
+                "Congratulations!",
+                style: TextStyle(
+                  color: Colors.green,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 24,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                "Winning Team: $teamName",
+                style: const TextStyle(
+                  fontWeight: FontWeight.w500,
+                  fontSize: 18,
+                ),
+              ),
             ],
           ),
-          content: Text("$teamName wins with a score of $score!"),
+          content: Text(
+            "$teamName wins with a score of $score!",
+            style: const TextStyle(fontSize: 16),
+          ),
           actions: [
-            TextButton(
-              child: const Text("OK"),
-              onPressed: () {
-                Navigator.of(context).pop(); // Close the dialog
-              },
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                ElevatedButton(
+                  child: const Text(
+                    "Cancel",
+                    style: TextStyle(fontSize: 16),
+                  ),
+                  onPressed: () {
+                    Navigator.of(context).pop(); // Close the dialog
+                  },
+                ),
+                ElevatedButton(
+                  child: const Text(
+                    "New Game",
+                    style: TextStyle(fontSize: 16),
+                  ),
+                  onPressed: () {
+                    Navigator.of(context).pop(); // Close the dialog
+                    Navigator.of(context).pop(); // Close the ScoreScreen
+                    // Optionally, you can reset the game or navigate away
+                  },
+                ),
+
+              ],
             ),
           ],
         );
@@ -73,8 +126,10 @@ class _ScoreScreenState extends State<ScoreScreen> {
     );
   }
 
-
+  // Updating Team A score
   void updateTeamAScore(int number) {
+    if (isGameOver) return; // Prevent score updates if game is over
+
     setState(() {
       int change = isAddOperationA ? number : -number;
       teamAScore += change;
@@ -82,19 +137,24 @@ class _ScoreScreenState extends State<ScoreScreen> {
     });
 
     // Scroll to the bottom after adding an item
-    Future.delayed(Duration(milliseconds: 100), () {
-      _scrollControllerA.animateTo(
-        _scrollControllerA.position.maxScrollExtent,
-        duration: Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-      );
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (_scrollControllerA.hasClients) {
+        _scrollControllerA.animateTo(
+          _scrollControllerA.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
     });
 
     // Check if team A has won
     checkForWin();
   }
 
+  // Updating Team B score
   void updateTeamBScore(int number) {
+    if (isGameOver) return; // Prevent score updates if game is over
+
     setState(() {
       int change = isAddOperationB ? number : -number;
       teamBScore += change;
@@ -102,18 +162,19 @@ class _ScoreScreenState extends State<ScoreScreen> {
     });
 
     // Scroll to the bottom after adding an item
-    Future.delayed(Duration(milliseconds: 100), () {
-      _scrollControllerB.animateTo(
-        _scrollControllerB.position.maxScrollExtent,
-        duration: Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-      );
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (_scrollControllerB.hasClients) {
+        _scrollControllerB.animateTo(
+          _scrollControllerB.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
     });
 
     // Check if team B has won
     checkForWin();
   }
-
 
   // Function to handle long-press delete with confirmation dialog
   void showDeleteConfirmation({
@@ -129,33 +190,36 @@ class _ScoreScreenState extends State<ScoreScreen> {
           content: const Text("Do you want to delete this score entry?"),
           actions: [
             TextButton(
-              child: const Text("Cancel"),
+              child: const Text(
+                "Cancel",
+                style: TextStyle(fontSize: 16),
+              ),
               onPressed: () {
                 Navigator.of(context).pop(); // Close the dialog
               },
             ),
             TextButton(
-              child: const Text("Delete"),
+              child: const Text(
+                "Delete",
+                style: TextStyle(fontSize: 16, color: Colors.red),
+              ),
               onPressed: () {
                 setState(() {
                   final scoreEntry = scoreList[index];
 
                   if (isTeamA) {
                     // Update team A's main score when deleting
-                    if (scoreEntry.scoreChange > 0) {
-                      teamAScore -= scoreEntry.scoreChange;
-                    } else {
-                      teamAScore += (-scoreEntry.scoreChange);
-                    }
+                    teamAScore -= scoreEntry.scoreChange;
                     scoreBoardListA.removeAt(index);
                   } else {
                     // Update team B's main score when deleting
-                    if (scoreEntry.scoreChange > 0) {
-                      teamBScore -= scoreEntry.scoreChange;
-                    } else {
-                      teamBScore += (-scoreEntry.scoreChange);
-                    }
+                    teamBScore -= scoreEntry.scoreChange;
                     scoreBoardListB.removeAt(index);
+                  }
+
+                  // Reset game over flag if necessary
+                  if (isGameOver) {
+                    isGameOver = false;
                   }
                 });
 
@@ -168,6 +232,7 @@ class _ScoreScreenState extends State<ScoreScreen> {
     );
   }
 
+  // Widget to build each team's section
   Widget buildTeamSection({
     required String teamName,
     required int teamScore,
@@ -189,17 +254,20 @@ class _ScoreScreenState extends State<ScoreScreen> {
             end: Alignment.bottomLeft,
             colors: [gradientStart, gradientEnd],
           ),
+          borderRadius: BorderRadius.circular(12),
         ),
-        padding: const EdgeInsets.all(4.0),
+        padding: const EdgeInsets.all(8.0),
         child: Column(
           children: [
-            const SizedBox(height: 30),
+            const SizedBox(height: 20),
+            // Team Score Display
             Container(
               height: 70,
               width: 120,
               decoration: BoxDecoration(
                 color: teamColor,
                 border: Border.all(color: Colors.white, width: 2),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Center(
                 child: Text(
@@ -212,7 +280,7 @@ class _ScoreScreenState extends State<ScoreScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 5),
+            const SizedBox(height: 10),
             // Team Name
             Container(
               height: 40,
@@ -220,6 +288,7 @@ class _ScoreScreenState extends State<ScoreScreen> {
               decoration: BoxDecoration(
                 color: Colors.white54,
                 border: Border.all(color: Colors.white, width: 2),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Center(
                 child: Text(
@@ -227,27 +296,38 @@ class _ScoreScreenState extends State<ScoreScreen> {
                   style: const TextStyle(
                     color: Colors.black,
                     fontSize: 24,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
             ),
-            const SizedBox(height: 5),
+            const SizedBox(height: 10),
             // Team Score List
             Expanded(
               child: Container(
-                height: double.infinity,
                 width: double.infinity,
-                decoration: BoxDecoration(border: Border.all(
-                  color: Colors.white,width: 2, // Change this to any color you like
-                   // Border width
-                ), color: Colors.white.withOpacity(0.5)),
-                //color: Colors.green.withOpacity(.4),
-                child: ListView.builder(
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.white, width: 2),
+                  color: Colors.white.withOpacity(0.5),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: scoreList.isEmpty
+                    ? const Center(
+                  child: Text(
+                    "No Scores Yet",
+                    style: TextStyle(color: Colors.black54, fontSize: 16),
+                  ),
+                )
+                    : ListView.builder(
                   controller: scrollController,
                   itemCount: scoreList.length,
                   itemBuilder: (context, index) {
                     final scoreEntry = scoreList[index];
                     return Card(
+                      color: scoreEntry.scoreChange >= 0
+                          ? Colors.green[100]
+                          : Colors.red[100],
+                      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       child: ListTile(
                         title: SingleChildScrollView(
                           scrollDirection: Axis.horizontal,
@@ -255,16 +335,16 @@ class _ScoreScreenState extends State<ScoreScreen> {
                             children: [
                               // Counter Number
                               Text(
-                                '${index + 1}. ', // Counter Number
+                                '${index + 1}. ',
                                 style: const TextStyle(
-                                  fontSize: 16,
+                                  fontSize: 14,
                                   fontWeight: FontWeight.w600,
                                   color: Colors.black,
                                 ),
                               ),
-                              // Button Count Number
+                              // Score Change
                               CircleAvatar(
-                                radius: 16,  // Set the size of the CircleAvatar (increase/decrease as needed)
+                                radius: 16,
                                 backgroundColor: scoreEntry.scoreChange >= 0
                                     ? Colors.green
                                     : Colors.red,
@@ -276,13 +356,12 @@ class _ScoreScreenState extends State<ScoreScreen> {
                                   ),
                                 ),
                               ),
-                          
-                              const SizedBox(width: 1),
+                              const SizedBox(width: 2),
                               // Time
-                              // Inside the ListTile for displaying the time
                               Text(
-                                DateFormat('hh:mm:ss a').format(scoreEntry.time), // Time in 12-hour format with AM/PM
-                                style: const TextStyle(fontSize: 10),
+                                DateFormat('hh:mm:ss a').format(scoreEntry.time),
+                                style: const TextStyle(
+                                    fontSize: 10, color: Colors.black54),
                               ),
                             ],
                           ),
@@ -305,13 +384,20 @@ class _ScoreScreenState extends State<ScoreScreen> {
             // Operation Buttons (+ and -)
             Container(
               color: Colors.white70,
+              padding: const EdgeInsets.symmetric(vertical: 8),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   ElevatedButton(
                     onPressed: () => onOperationPressed(true),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: isAddOperation ? Colors.green : Colors.grey,
+                      backgroundColor:
+                      isAddOperation ? Colors.green : Colors.grey,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                     ),
                     child: const Text(
                       '+',
@@ -322,7 +408,13 @@ class _ScoreScreenState extends State<ScoreScreen> {
                   ElevatedButton(
                     onPressed: () => onOperationPressed(false),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: !isAddOperation ? Colors.red : Colors.grey,
+                      backgroundColor:
+                      !isAddOperation ? Colors.red : Colors.grey,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                     ),
                     child: const Text(
                       '-',
@@ -346,19 +438,20 @@ class _ScoreScreenState extends State<ScoreScreen> {
               ),
               itemCount: numbers.length,
               itemBuilder: (context, index) {
-                return Container(
-                  height: 100, // Increased height for better visibility
-                  child: ElevatedButton(
-                    onPressed: () => onNumberPressed(numbers[index]),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white.withOpacity(.6),
-                      padding: const EdgeInsets.symmetric(vertical: 5), // Increased vertical padding
-                      elevation: 5, // Optional: add elevation for better visibility
+                return ElevatedButton(
+                  onPressed: () => onNumberPressed(numbers[index]),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white.withOpacity(0.8),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    elevation: 5,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Text(
-                      '${numbers[index]}', // Display the number on the button
-                      style: const TextStyle(fontSize: 20, color: Colors.black), // Increased font size
-                    ),
+                  ),
+                  child: Text(
+                    '${numbers[index]}',
+                    style:
+                    const TextStyle(fontSize: 20, color: Colors.black),
                   ),
                 );
               },
@@ -370,62 +463,77 @@ class _ScoreScreenState extends State<ScoreScreen> {
   }
 
   @override
+  void dispose() {
+    _scrollControllerA.dispose();
+    _scrollControllerB.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topRight,
-            end: Alignment.bottomLeft,
-            colors: [
-              Color(0xFFFAC99D),
-              Color(0xFFFAF0D7),
-            ],
+    return WillPopScope(
+      onWillPop: () async {
+        // Minimize the app when back button is pressed
+        //FlutterAppMinimizer.minimize();
+        return false; // Prevents the default back button behavior
+      },
+      child: Scaffold(
+        backgroundColor: Colors.transparent, // To allow gradient background
+        body: Container(
+          width: double.infinity,
+          height: double.infinity,
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topRight,
+              end: Alignment.bottomLeft,
+              colors: [
+                Color(0xFFFAC99D),
+                Color(0xFFFAF0D7),
+              ],
+            ),
           ),
-        ),
-        child: Row(
-          children: [
-            // Team A Section
-            buildTeamSection(
-              teamName: widget.team_A_name,
-              teamScore: teamAScore,
-              scoreList: scoreBoardListA,
-              isAddOperation: isAddOperationA,
-              onNumberPressed: updateTeamAScore,
-              onOperationPressed: (isAdd) {
-                setState(() {
-                  isAddOperationA = isAdd;
-                });
-              },
-              teamColor:  Color(0xFF38ABD3),
-              gradientStart: Color(0xFFF1ADAF),
-              gradientEnd: Color(0xFF2CA830),
-              scrollController: _scrollControllerA,
-              isTeamA: true, // Pass true for Team A
+          child: SafeArea(
+            child: Row(
+              children: [
+                // Team A Section
+                buildTeamSection(
+                  teamName: widget.team_A_name,
+                  teamScore: teamAScore,
+                  scoreList: scoreBoardListA,
+                  isAddOperation: isAddOperationA,
+                  onNumberPressed: updateTeamAScore,
+                  onOperationPressed: (isAdd) {
+                    setState(() {
+                      isAddOperationA = isAdd;
+                    });
+                  },
+                  teamColor: const Color(0xFF38ABD3),
+                  gradientStart: const Color(0xFFF1ADAF),
+                  gradientEnd: const Color(0xFF2CA830),
+                  scrollController: _scrollControllerA,
+                  isTeamA: true, // Pass true for Team A
+                ),
+                // Team B Section
+                buildTeamSection(
+                  teamName: widget.team_B_name,
+                  teamScore: teamBScore,
+                  scoreList: scoreBoardListB,
+                  isAddOperation: isAddOperationB,
+                  onNumberPressed: updateTeamBScore,
+                  onOperationPressed: (isAdd) {
+                    setState(() {
+                      isAddOperationB = isAdd;
+                    });
+                  },
+                  teamColor: const Color(0xFF38ABD3),
+                  gradientStart: const Color(0xFF7BD77E),
+                  gradientEnd: const Color(0xFFB95456),
+                  scrollController: _scrollControllerB,
+                  isTeamA: false, // Pass false for Team B
+                ),
+              ],
             ),
-            // Team B Section
-            buildTeamSection(
-              teamName: widget.team_B_name,
-              teamScore: teamBScore,
-              scoreList: scoreBoardListB,
-              isAddOperation: isAddOperationB,
-              onNumberPressed: updateTeamBScore,
-              onOperationPressed: (isAdd) {
-                setState(() {
-                  isAddOperationB = isAdd;
-                });
-              },
-              teamColor:  Color(0xFF38ABD3),
-              gradientStart: Color(0xFF7BD77E),
-              gradientEnd: Color(0xFFB95456),
-
-
-              isTeamA: false, // Pass false for Team B
-              scrollController: _scrollControllerB,
-            ),
-          ],
+          ),
         ),
       ),
     );
